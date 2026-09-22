@@ -52,6 +52,29 @@ def get_active_users():
     return message
 
 
+# Function to display network information
+def get_network_info(sock):
+
+    client_ip, client_port = sock.getpeername()
+
+    message = (
+        "\n\33[33m\33[1m"
+        "╔══════════════════════════════╗\n"
+        "║        NETWORK INFO          ║\n"
+        "╠══════════════════════════════╣\n"
+        f"║ Protocol  : TCP              ║\n"
+        f"║ Server IP : 127.0.0.1        ║\n"
+        f"║ Server Port: {port:<15}║\n"
+        f"║ Your IP   : {client_ip:<15}║\n"
+        f"║ Your Port : {client_port:<15}║\n"
+        f"║ Active Users: {len(record):<13}║\n"
+        "╚══════════════════════════════╝\n"
+        "\33[0m"
+    )
+
+    return message
+
+
 if __name__ == "__main__":
 
     # Dictionary to store address corresponding to username
@@ -164,6 +187,17 @@ if __name__ == "__main__":
 
                         sock.send(
                             users_message.encode('utf-8')
+                        )
+
+                        continue
+
+                    # Show network information
+                    if data == "/info":
+
+                        info_message = get_network_info(sock)
+
+                        sock.send(
+                            info_message.encode('utf-8')
                         )
 
                         continue
