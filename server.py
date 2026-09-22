@@ -1,5 +1,10 @@
 import socket
 import select
+from datetime import datetime
+
+
+def get_timestamp():
+    return datetime.now().strftime("%H:%M:%S")
 
 
 # Function to send message to all connected clients
@@ -33,7 +38,11 @@ if __name__ == "__main__":
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_REUSEADDR,
+        1
+    )
 
     server_socket.bind(("127.0.0.1", port))
     server_socket.listen(10)
@@ -48,7 +57,9 @@ if __name__ == "__main__":
 
         # Get the list of sockets which are ready to be read
         rList, wList, error_sockets = select.select(
-            connected_list, [], []
+            connected_list,
+            [],
+            []
         )
 
         for sock in rList:
@@ -67,8 +78,9 @@ if __name__ == "__main__":
                 if name in record.values():
 
                     sockfd.send(
-                        "\r\33[31m\33[1m Username already taken!\n\33[0m"
-                        .encode('utf-8')
+                        "\r\33[31m\33[1m "
+                        "Username already taken!\n"
+                        "\33[0m".encode('utf-8')
                     )
 
                     connected_list.remove(sockfd)
@@ -92,10 +104,13 @@ if __name__ == "__main__":
                         "\33[0m".encode('utf-8')
                     )
 
+                    # Notify other clients
                     send_to_all(
                         sockfd,
                         f"\33[32m\33[1m\r "
-                        f"{name} joined the conversation\n\33[0m"
+                        f"[{get_timestamp()}] "
+                        f"{name} joined the conversation\n"
+                        f"\33[0m"
                     )
 
             # Incoming message from an existing client
@@ -117,6 +132,7 @@ if __name__ == "__main__":
 
                         msg = (
                             "\r\33[1m\33[31m "
+                            f"[{get_timestamp()}] "
                             f"{record[addr]} left the conversation "
                             "\33[0m\n"
                         )
@@ -139,6 +155,7 @@ if __name__ == "__main__":
 
                         msg = (
                             "\r\33[1m\33[35m "
+                            f"[{get_timestamp()}] "
                             f"{record[addr]}: "
                             "\33[0m"
                             f"{data}\n"
@@ -151,6 +168,7 @@ if __name__ == "__main__":
 
                     try:
                         addr = sock.getpeername()
+
                     except:
                         continue
 
@@ -159,8 +177,10 @@ if __name__ == "__main__":
                         send_to_all(
                             sock,
                             "\r\33[31m\33[1m "
-                            f"{record[addr]} left the conversation "
-                            "unexpectedly\33[0m\n"
+                            f"[{get_timestamp()}] "
+                            f"{record[addr]} "
+                            "left the conversation unexpectedly"
+                            "\33[0m\n"
                         )
 
                         print(
