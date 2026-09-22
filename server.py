@@ -1,97 +1,178 @@
-import socket, select
+import socket
+import select
 
-#Function to send message to all connected clients
-def send_to_all (sock, message):
-	#Message not forwarded to server and sender itself
-	for socket in connected_list:
-		if socket != server_socket and socket != sock :
-			try :
-				socket.send(message)
-			except :
-				# if connection not available
-				socket.close()
-				connected_list.remove(socket)
+
+# Function to send message to all connected clients
+def send_to_all(sock, message):
+
+    # Message is not forwarded to the server and sender itself
+    for client in connected_list[:]:
+
+        if client != server_socket and client != sock:
+
+            try:
+                client.send(message.encode('utf-8'))
+
+            except:
+                client.close()
+
+                if client in connected_list:
+                    connected_list.remove(client)
+
 
 if __name__ == "__main__":
-	name=""
-	#dictionary to store address corresponding to username
-	record={}
-	# List to keep track of socket descriptors
-	connected_list = []
-	buffer = 4096
-	port = 5001
 
-	server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Dictionary to store address corresponding to username
+    record = {}
 
-	server_socket.bind(("localhost", port))
-	server_socket.listen(10) #listen atmost 10 connection at one time
+    # List to keep track of socket descriptors
+    connected_list = []
 
-	# Add server socket to the list of readable connections
-	connected_list.append(server_socket)
+    buffer = 4096
+    port = 5001
 
-	print "\33[32m \t\t\t\tSERVER WORKING \33[0m" 
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	while 1:
-        # Get the list sockets which are ready to be read through select
-		rList,wList,error_sockets = select.select(connected_list,[],[])
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-		for sock in rList:
-			#New connection
-			if sock == server_socket:
-				# Handle the case in which there is a new connection recieved through server_socket
-				sockfd, addr = server_socket.accept()
-				name=sockfd.recv(buffer)
-				connected_list.append(sockfd)
-				record[addr]=""
-				#print "record and conn list ",record,connected_list
-                
-                #if repeated username
-				if name in record.values():
-					sockfd.send("\r\33[31m\33[1m Username already taken!\n\33[0m")
-					del record[addr]
-					connected_list.remove(sockfd)
-					sockfd.close()
-					continue
-				else:
-                    #add name and address
-					record[addr]=name
-					print "Client (%s, %s) connected" % addr," [",record[addr],"]"
-					sockfd.send("\33[32m\r\33[1m Welcome to chat room. Enter 'tata' anytime to exit\n\33[0m")
-					send_to_all(sockfd, "\33[32m\33[1m\r "+name+" joined the conversation \n\33[0m")
+    server_socket.bind(("127.0.0.1", port))
+    server_socket.listen(10)
 
-			#Some incoming message from a client
-			else:
-				# Data from client
-				try:
-					data1 = sock.recv(buffer)
-					#print "sock is: ",sock
-					data=data1[:data1.index("\n")]
-					#print "\ndata received: ",data
-                    
-                    #get addr of client sending the message
-					i,p=sock.getpeername()
-					if data == "tata":
-						msg="\r\33[1m"+"\33[31m "+record[(i,p)]+" left the conversation \33[0m\n"
-						send_to_all(sock,msg)
-						print "Client (%s, %s) is offline" % (i,p)," [",record[(i,p)],"]"
-						del record[(i,p)]
-						connected_list.remove(sock)
-						sock.close()
-						continue
+    # Add server socket to the list of readable connections
+    connected_list.append(server_socket)
 
-					else:
-						msg="\r\33[1m"+"\33[35m "+record[(i,p)]+": "+"\33[0m"+data+"\n"
-						send_to_all(sock,msg)
-            
-                #abrupt user exit
-				except:
-					(i,p)=sock.getpeername()
-					send_to_all(sock, "\r\33[31m \33[1m"+record[(i,p)]+" left the conversation unexpectedly\33[0m\n")
-					print "Client (%s, %s) is offline (error)" % (i,p)," [",record[(i,p)],"]\n"
-					del record[(i,p)]
-					connected_list.remove(sock)
-					sock.close()
-					continue
+    print("\33[32m\t\t\t\tSERVER WORKING\33[0m")
+    print(f"Server listening on 127.0.0.1:{port}")
 
-	server_socket.close()
+    while True:
 
+        # Get the list of sockets which are ready to be read
+        rList, wList, error_sockets = select.select(
+            connected_list, [], []
+        )
+
+        for sock in rList:
+
+            # New connection
+            if sock == server_socket:
+
+                sockfd, addr = server_socket.accept()
+
+                # Receive username
+                name = sockfd.recv(buffer).decode('utf-8').strip()
+
+                connected_list.append(sockfd)
+
+                # Check if username already exists
+                if name in record.values():
+
+                    sockfd.send(
+                        "\r\33[31m\33[1m Username already taken!\n\33[0m"
+                        .encode('utf-8')
+                    )
+
+                    connected_list.remove(sockfd)
+                    sockfd.close()
+
+                    continue
+
+                else:
+
+                    # Add name and address
+                    record[addr] = name
+
+                    print(
+                        f"Client {addr} connected [{name}]"
+                    )
+
+                    sockfd.send(
+                        "\33[32m\r\33[1m "
+                        "Welcome to chat room. "
+                        "Enter 'tata' anytime to exit\n"
+                        "\33[0m".encode('utf-8')
+                    )
+
+                    send_to_all(
+                        sockfd,
+                        f"\33[32m\33[1m\r "
+                        f"{name} joined the conversation\n\33[0m"
+                    )
+
+            # Incoming message from an existing client
+            else:
+
+                try:
+
+                    data = sock.recv(buffer).decode('utf-8').strip()
+
+                    # Client disconnected
+                    if not data:
+                        raise ConnectionError
+
+                    # Get address of client sending the message
+                    addr = sock.getpeername()
+
+                    # Client wants to exit
+                    if data == "tata":
+
+                        msg = (
+                            "\r\33[1m\33[31m "
+                            f"{record[addr]} left the conversation "
+                            "\33[0m\n"
+                        )
+
+                        send_to_all(sock, msg)
+
+                        print(
+                            f"Client {addr} is offline "
+                            f"[{record[addr]}]"
+                        )
+
+                        del record[addr]
+
+                        connected_list.remove(sock)
+                        sock.close()
+
+                        continue
+
+                    else:
+
+                        msg = (
+                            "\r\33[1m\33[35m "
+                            f"{record[addr]}: "
+                            "\33[0m"
+                            f"{data}\n"
+                        )
+
+                        send_to_all(sock, msg)
+
+                # Abrupt user exit
+                except:
+
+                    try:
+                        addr = sock.getpeername()
+                    except:
+                        continue
+
+                    if addr in record:
+
+                        send_to_all(
+                            sock,
+                            "\r\33[31m\33[1m "
+                            f"{record[addr]} left the conversation "
+                            "unexpectedly\33[0m\n"
+                        )
+
+                        print(
+                            f"Client {addr} is offline (error) "
+                            f"[{record[addr]}]"
+                        )
+
+                        del record[addr]
+
+                    if sock in connected_list:
+                        connected_list.remove(sock)
+
+                    sock.close()
+
+    server_socket.close()
