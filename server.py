@@ -25,6 +25,33 @@ def send_to_all(sock, message):
                     connected_list.remove(client)
 
 
+# Function to display active users
+def get_active_users():
+    message = (
+        "\n\33[36m\33[1m"
+        "╔══════════════════════════════╗\n"
+        "║        ACTIVE USERS          ║\n"
+        "╠══════════════════════════════╣\n"
+        "\33[0m"
+    )
+
+    if record:
+        for index, username in enumerate(record.values(), start=1):
+            message += (
+                f"\33[36m║ {index}. {username:<25}║\n"
+            )
+    else:
+        message += "\33[36m║ No active users             ║\n"
+
+    message += (
+        "\33[36m\33[1m"
+        "╚══════════════════════════════╝\n"
+        "\33[0m"
+    )
+
+    return message
+
+
 if __name__ == "__main__":
 
     # Dictionary to store address corresponding to username
@@ -36,7 +63,10 @@ if __name__ == "__main__":
     buffer = 4096
     port = 5001
 
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket = socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM
+    )
 
     server_socket.setsockopt(
         socket.SOL_SOCKET,
@@ -127,6 +157,17 @@ if __name__ == "__main__":
                     # Get address of client sending the message
                     addr = sock.getpeername()
 
+                    # Show active users
+                    if data == "/users":
+
+                        users_message = get_active_users()
+
+                        sock.send(
+                            users_message.encode('utf-8')
+                        )
+
+                        continue
+
                     # Client wants to exit
                     if data == "tata":
 
@@ -151,6 +192,7 @@ if __name__ == "__main__":
 
                         continue
 
+                    # Normal chat message
                     else:
 
                         msg = (
