@@ -27,6 +27,7 @@ def send_to_all(sock, message):
 
 # Function to display active users
 def get_active_users():
+
     message = (
         "\n\33[36m\33[1m"
         "╔══════════════════════════════╗\n"
@@ -153,7 +154,7 @@ if __name__ == "__main__":
                     sockfd.send(
                         "\33[32m\r\33[1m "
                         "Welcome to chat room. "
-                        "Enter 'tata' anytime to exit\n"
+                        "Type 'exit' anytime to leave.\n"
                         "\33[0m".encode('utf-8')
                     )
 
@@ -203,7 +204,7 @@ if __name__ == "__main__":
                         continue
 
                     # Client wants to exit
-                    if data == "tata":
+                    if data.lower() == "exit":
 
                         msg = (
                             "\r\33[1m\33[31m "
